@@ -131,16 +131,23 @@ func NewOutbounConn(c net.Conn, url string, handler OutboundConnHandler, maxChan
 	*/
 	br := bufio.NewReader(c)
 	bw := bufio.NewWriter(c)
-	obConn := &outboundConn{
-		url:          url,
-		rtmpURL:      rtmpURL,
-		handler:      handler,
-		status:       OUTBOUND_CONN_STATUS_HANDSHAKE_OK,
-		transactions: make(map[uint32]string),
-		streams:      make(map[uint32]OutboundStream),
+	timeout := time.Duration(10 * time.Second)
+	err = Handshake(c, br, bw, timeout)
+	//err = HandshakeSample(c, br, bw, timeout)
+	if err == nil {
+		obConn := &outboundConn{
+			url:          url,
+			rtmpURL:      rtmpURL,
+			handler:      handler,
+			status:       OUTBOUND_CONN_STATUS_HANDSHAKE_OK,
+			transactions: make(map[uint32]string),
+			streams:      make(map[uint32]OutboundStream),
+		}
+		obConn.conn = NewConn(c, br, bw, obConn, maxChannelNumber)
+		return obConn, nil
 	}
-	obConn.conn = NewConn(c, br, bw, obConn, maxChannelNumber)
-	return obConn, nil
+
+	return nil, err
 }
 
 // Connect an appliction on FMS after handshake.
